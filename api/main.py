@@ -52,8 +52,13 @@ def update_site(site_id: int, site: SiteIn):
     try:
         with get_conn() as conn:
             row = conn.execute(
-                "UPDATE sites SET name = %s, url = %s WHERE id = %s RETURNING *",
-                (site.name, str(site.url), site_id),
+                """UPDATE sites
+                   SET name = %s,
+                       url = %s,
+                       is_up = CASE WHEN url = %s THEN is_up ELSE NULL END
+                   WHERE id = %s
+                   RETURNING *""",
+                (site.name, str(site.url), str(site.url), site_id),
             ).fetchone()
     except psycopg.errors.UniqueViolation:
         raise HTTPException(409, "Ce site est déjà surveillé")
