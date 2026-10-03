@@ -84,7 +84,7 @@ def main():
     signal.signal(signal.SIGTERM, stop)  # envoyé par Docker et Kubernetes à l'arrêt
     signal.signal(signal.SIGINT, stop)   # Ctrl+C en local
 
-    r = get_redis()
+    r = get_redis(socket_timeout=15)  # doit rester supérieur à block (5 s)
     ensure_group(r)
     print(f"Alerter démarré (consommateur : {CONSUMER})")
 
@@ -93,9 +93,15 @@ def main():
     read_from = "0"
 
     while running:
-        response = r.xreadgroup(
-            GROUP, CONSUMER, {config.EVENTS_STREAM: read_from}, count=10, block=5000
-        )
+        try:
+            response = r.xreadgroup(
+                GROUP, CONSUMER, {config.EVENTS_STREAM: read_from}, count=10, block=5000
+            )
+        except (redis.ConnectionError, redis.TimeoutError) as exc:
+            print(f"Redis injoignable, nouvel essai dans 5 s : {exc}")
+            time.sleep(5)
+            continue
+
         messages = response[0][1] if response else []
 
         if not messages:
