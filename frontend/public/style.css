@@ -1,0 +1,278 @@
+:root {
+  --bg: #07090f;
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-hover: rgba(255, 255, 255, 0.055);
+  --border: rgba(255, 255, 255, 0.07);
+  --text: #e6edf3;
+  --dim: #7d8794;
+  --ok: #2ee6a6;
+  --ko: #ff4d6d;
+  --warn: #f5b84b;
+  --accent: #5ee7df;
+  --radius: 14px;
+  --sans: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  /* halos lumineux discrets à la place du quadrillage */
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(46, 230, 166, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(94, 140, 255, 0.08), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* En-tête translucide qui reste en haut */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px clamp(16px, 4vw, 56px);
+  background: rgba(7, 9, 15, 0.6);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
+.accent {
+  background: linear-gradient(90deg, var(--ok), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.clock { color: var(--dim); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+main {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 32px clamp(16px, 4vw, 56px);
+}
+
+/* Bandeau d'état global */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--dim);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.banner.ok {
+  color: var(--ok);
+  border-color: rgba(46, 230, 166, 0.25);
+  background: linear-gradient(90deg, rgba(46, 230, 166, 0.1), transparent 70%);
+}
+.banner.ko {
+  color: var(--ko);
+  border-color: rgba(255, 77, 109, 0.3);
+  background: linear-gradient(90deg, rgba(255, 77, 109, 0.12), transparent 70%);
+}
+
+/* Point lumineux avec une onde qui s'élargit */
+.pulse {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ping 2s ease-out infinite;
+}
+@keyframes ping {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+
+/* Compteurs */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: transform 0.2s, border-color 0.2s;
+}
+.stat:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.12); }
+.label { color: var(--dim); font-size: 11px; font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase; }
+.value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.value.small { font-size: 16px; font-family: var(--mono); font-weight: 500; }
+.stat.ok .value { color: var(--ok); }
+.stat.ko .value { color: var(--ko); }
+
+/* Panneaux */
+.panel {
+  padding: 22px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  backdrop-filter: blur(8px);
+}
+h2 {
+  margin: 0 0 16px;
+  color: var(--dim);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* Liste des sites */
+#sites { display: flex; flex-direction: column; gap: 6px; }
+
+.site {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) auto auto;
+  gap: 20px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.site:hover { background: var(--surface-hover); }
+
+.info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.title { display: flex; align-items: center; gap: 10px; }
+.name { font-weight: 600; }
+.url {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Voyant d'état : un halo doux plutôt qu'une lueur néon */
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+.site.up .dot { background: var(--ok); box-shadow: 0 0 0 4px rgba(46, 230, 166, 0.15); }
+.site.down .dot {
+  background: var(--ko);
+  box-shadow: 0 0 0 4px rgba(255, 77, 109, 0.18);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+.site.unknown .dot { background: var(--warn); box-shadow: 0 0 0 4px rgba(245, 184, 75, 0.15); }
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* Badge d'état en pilule */
+.tag {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+}
+.site.up .tag { color: var(--ok); background: rgba(46, 230, 166, 0.12); }
+.site.down .tag { color: var(--ko); background: rgba(255, 77, 109, 0.14); }
+.site.unknown .tag { color: var(--warn); background: rgba(245, 184, 75, 0.12); }
+
+/* Historique des derniers checks */
+.history { display: flex; align-items: flex-end; gap: 3px; height: 26px; }
+.bar { flex: 1; max-width: 7px; height: 100%; border-radius: 3px; transition: filter 0.15s; }
+.bar.up { background: linear-gradient(to top, rgba(46, 230, 166, 0.35), var(--ok)); }
+.bar.down { background: linear-gradient(to top, rgba(255, 77, 109, 0.45), var(--ko)); }
+.bar:hover { filter: brightness(1.4); }
+
+.meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-family: var(--mono); }
+.uptime { font-weight: 600; font-variant-numeric: tabular-nums; }
+.latency { color: var(--dim); font-size: 12px; }
+
+.delete {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dim);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.delete:hover { background: rgba(255, 77, 109, 0.12); color: var(--ko); }
+
+/* Formulaire */
+form { display: flex; flex-wrap: wrap; gap: 10px; }
+input {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input::placeholder { color: var(--dim); }
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(94, 231, 223, 0.15);
+}
+button[type="submit"] {
+  padding: 12px 22px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--ok), var(--accent));
+  color: #04110c;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+button[type="submit"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(46, 230, 166, 0.25);
+}
+
+.form-msg { min-height: 1em; margin: 12px 0 0; font-size: 13px; }
+.form-msg.ok { color: var(--ok); }
+.form-msg.ko { color: var(--ko); }
+.empty { color: var(--dim); padding: 8px 16px; }
+
+footer { padding: 24px; text-align: center; color: var(--dim); font-size: 12px; }
+
+/* Téléphone : l'historique passe sur sa propre ligne */
+@media (max-width: 700px) {
+  .site { grid-template-columns: 1fr auto auto; grid-auto-flow: dense; }
+  .history { grid-column: 1 / -1; }
+}
+
+/* Pas d'animation si l'utilisateur l'a demandé dans son système */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

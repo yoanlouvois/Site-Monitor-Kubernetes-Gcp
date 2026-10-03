@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SITE_MONITOR // Centre de surveillance</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="accent">◈</span> SITE<span class="accent">_MONITOR</span></div>
+    <div class="clock" id="clock">--:--:--</div>
+  </header>
+
+  <main>
+    <section id="banner" class="banner">
+      <span class="pulse"></span>
+      <span id="banner-text">INITIALISATION...</span>
+    </section>
+
+    <section class="stats">
+      <div class="stat"><span class="label">CIBLES</span><span id="stat-total" class="value">-</span></div>
+      <div class="stat ok"><span class="label">EN LIGNE</span><span id="stat-up" class="value">-</span></div>
+      <div class="stat ko"><span class="label">EN PANNE</span><span id="stat-down" class="value">-</span></div>
+      <div class="stat"><span class="label">DERNIÈRE SYNCHRO</span><span id="stat-sync" class="value small">-</span></div>
+    </section>
+
+    <section class="panel">
+      <h2>&gt; Systèmes surveillés</h2>
+      <div id="sites"></div>
+    </section>
+
+    <section class="panel">
+      <h2>&gt; Ajouter une cible</h2>
+      <form id="add-form">
+        <input id="name" placeholder="Nom (ex. Mon site)" required maxlength="100">
+        <input id="url" type="url" placeholder="https://..." required>
+        <button type="submit">[ AJOUTER ]</button>
+      </form>
+      <p id="form-msg" class="form-msg"></p>
+    </section>
+  </main>
+
+  <footer>Rafraîchissement automatique toutes les 30 s</footer>
+  <script src="app.js"></script>
+</body>
+</html>
