@@ -38,5 +38,20 @@ services:
       postgres:
         condition: service_healthy
 
+  checker:
+    build:
+      context: .
+      dockerfile: checker/Dockerfile
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles: ["jobs"]
+
 volumes:
   pgdata:
