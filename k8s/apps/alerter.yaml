@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alerter
+  namespace: site-monitor
+  labels:
+    app: alerter
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: alerter
+  template:
+    metadata:
+      labels:
+        app: alerter
+    spec:
+      hostname: alerter
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: alerter
+          image: site-monitor/alerter:0.1.0
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: site-monitor-config
+          env:
+            - name: DISCORD_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: site-monitor-secrets
+                  key: DISCORD_WEBHOOK_URL
+            # Pas utilisé par l'alerter, mais exigé par common/config.py (voir README)
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: site-monitor-secrets
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
