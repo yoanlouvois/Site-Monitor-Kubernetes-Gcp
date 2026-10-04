@@ -1,0 +1,24 @@
+# Cluster Kubernetes local pour le développement et les tests.
+# Création : kind create cluster --name site-monitor --config k8s/local/kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  # Nœud du control plane : il accueillera aussi le contrôleur Ingress
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    # Relie les ports 80 et 443 de ta machine à ceux de ce nœud
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+  # Deux workers pour faire tourner les applications
+  - role: worker
+  - role: worker
