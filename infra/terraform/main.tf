@@ -11,6 +11,8 @@ locals {
     "iap.googleapis.com",     # tunnel IAP pour SSH et l'API server
     "oslogin.googleapis.com", # SSH via IAM
     "iam.googleapis.com", # compte de service
+    "artifactregistry.googleapis.com", # registre d'images
+    "cloudresourcemanager.googleapis.com", # droits IAM au niveau du projet
   ]
 }
 

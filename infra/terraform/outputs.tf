@@ -21,3 +21,8 @@ output "ssh_commands" {
     name => "gcloud compute ssh ${name} --zone ${var.zone} --tunnel-through-iap"
   }
 }
+
+output "registry" {
+  description = "Préfixe des images dans Artifact Registry"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
+}
