@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: site-monitor/frontend:0.1.0
+          image: site-monitor/frontend:0.1.1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
