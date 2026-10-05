@@ -167,7 +167,7 @@ gcloud compute ssh k8s-worker-1 --zone $Zone --tunnel-through-iap
 Coller la commande worker de l'étape 2, avec `sudo` :
 
 ```bash
-sudo kubeadm join 10.10.0.10:6443 --token <JETON> --discovery-token-ca-cert-hash sha256:<EMPREINTE>
+sudo kubeadm join 10.10.0.10:6443 --token <JETON> --discovery-token-ca-cert-hash sha256:<EMPREINTE> --node-name k8s-worker-1
 ```
 
 Résultat attendu : `This node has joined the cluster`.
@@ -190,7 +190,46 @@ sudo kubeadm token delete <ID_DU_JETON>
 
 ---
 
-## 6. Vérifier
+## 6. Accès au registre d'images (Artifact Registry)
+
+Le registre est privé : sans identifiants, les pods restent en `ImagePullBackOff`.
+`setup-registry-auth.sh` (en fins de ligne **LF**) installe un **credential provider** pour le kubelet : un petit programme Python qui récupère un jeton temporaire (~1 h) du compte de service `k8s-nodes` auprès du serveur de métadonnées de la VM. Aucune clé n'est stockée, ni sur le disque, ni dans Kubernetes.
+
+Il crée trois choses sur chaque nœud :
+
+| Fichier | Rôle |
+|---|---|
+| `/usr/local/lib/kubelet-credential-providers/gcp-metadata-credential-provider` | Le programme : demande un jeton au serveur de métadonnées et le renvoie au kubelet |
+| `/etc/kubernetes/credential-provider-config.yaml` | Pour quelles images l'utiliser (`europe-west9-docker.pkg.dev` uniquement) |
+| `/etc/default/kubelet` | Les options du kubelet qui activent le provider |
+
+Prérequis (Terraform) : le dépôt Artifact Registry et le rôle `roles/artifactregistry.reader` du compte `k8s-nodes` sur ce dépôt.
+
+```powershell
+foreach ($n in "k8s-cp", "k8s-worker-1", "k8s-worker-2") {
+    gcloud compute scp infra/kubeadm/setup-registry-auth.sh "${n}:setup-registry-auth.sh" --zone $Zone --tunnel-through-iap
+    gcloud compute ssh $n --zone $Zone --tunnel-through-iap --command "sudo bash setup-registry-auth.sh"
+}
+```
+
+Chaque nœud doit afficher :
+
+```
+OK : kubelet redémarré
+OK : jeton obtenu pour europe-west9-docker.pkg.dev - cache ...s
+```
+
+Le redémarrage du kubelet ne coupe pas les pods en cours. Vérifier que les nœuds sont toujours `Ready` :
+
+```powershell
+kubectl get nodes
+```
+
+> Le script peut aussi être lancé juste après l'étape 1, avant `kubeadm init`. Dans ce cas, la ligne `OK : kubelet redémarré` peut ne pas apparaître (le kubelet attend sa configuration) : c'est normal, seule la ligne du jeton compte.
+
+---
+
+## 7. Vérifier
 
 ```powershell
 kubectl get nodes -o wide
@@ -267,3 +306,5 @@ Puis relancer `kubeadm init` (et refaire les étapes 3, 4 et 5) ou `kubeadm join
 | `Unable to connect to the server` | Tunnel IAP fermé | Relancer `start-iap-tunnel` |
 | Nœuds `NotReady` | Pas de CNI | Étape 4 |
 | `kubeadm init` bloqué sur le kubelet | containerd mal configuré | Sur le nœud : `sudo journalctl -u kubelet -n 50` |
+| Pod en `ImagePullBackOff` sur une image du registre (`403` ou `unauthorized`) | Credential provider absent ou rôle IAM manquant | Relancer l'étape 6 ; vérifier `gcloud artifacts repositories get-iam-policy site-monitor --location europe-west9` |
+| Nœud `NotReady` juste après l'étape 6 | Erreur dans `/etc/default/kubelet` ou la config du provider | Sur le nœud : `sudo journalctl -u kubelet -n 50` |
