@@ -1,0 +1,27 @@
+# Active la Gateway API et crée une Gateway par défaut
+providers:
+  kubernetesGateway:
+    enabled: true
+gateway:
+  listeners:
+    web:
+      namespacePolicy:
+        from: All
+
+# Le pod Traefik écoute directement sur les ports 80 et 443 du nœud
+ports:
+  web:
+    hostPort: 80
+  websecure:
+    hostPort: 443
+
+service:
+  type: ClusterIP
+
+# Placer Traefik sur le nœud dont les ports sont reliés à Windows
+nodeSelector:
+  ingress-ready: "true"
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
