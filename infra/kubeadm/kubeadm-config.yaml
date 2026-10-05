@@ -1,0 +1,19 @@
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 10.10.0.10
+  bindPort: 6443
+nodeRegistration:
+  name: k8s-cp
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+controlPlaneEndpoint: "10.10.0.10:6443"
+networking:
+  podSubnet: 10.244.0.0/16      # adresses des pods (Cilium)
+  serviceSubnet: 10.96.0.0/12   # adresses des Services
+apiServer:
+  certSANs:
+    - 10.10.0.10
+    - 127.0.0.1                 # pour kubectl via le tunnel IAP depuis ton PC
+    - localhost
