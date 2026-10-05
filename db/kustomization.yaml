@@ -1,0 +1,12 @@
+# Génère la ConfigMap postgres-init à partir de init.sql.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+configMapGenerator:
+  - name: postgres-init
+    files:
+      - init.sql
+
+generatorOptions:
+  # Garder le nom exact "postgres-init"
+  disableNameSuffixHash: true
