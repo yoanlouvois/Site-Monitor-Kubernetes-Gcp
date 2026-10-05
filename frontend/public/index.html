@@ -26,7 +26,15 @@
     </section>
 
     <section class="panel">
-      <h2>&gt; Systèmes surveillés</h2>
+      <div class="panel-head">
+        <h2>&gt; Systèmes surveillés</h2>
+        <!-- Période utilisée pour l'uptime et le temps de réponse moyen -->
+        <div class="period" id="period">
+          <button type="button" data-days="1">24 h</button>
+          <button type="button" data-days="7" class="active">7 j</button>
+          <button type="button" data-days="30">30 j</button>
+        </div>
+      </div>
       <div id="sites"></div>
     </section>
 

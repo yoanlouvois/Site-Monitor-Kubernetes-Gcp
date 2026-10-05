@@ -209,19 +209,6 @@ h2 {
 .uptime { font-weight: 600; font-variant-numeric: tabular-nums; }
 .latency { color: var(--dim); font-size: 12px; }
 
-.delete {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--dim);
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-.delete:hover { background: rgba(255, 77, 109, 0.12); color: var(--ko); }
-
 /* Formulaire */
 form { display: flex; flex-wrap: wrap; gap: 10px; }
 input {
@@ -275,4 +262,113 @@ footer { padding: 24px; text-align: center; color: var(--dim); font-size: 12px; 
 /* Pas d'animation si l'utilisateur l'a demandé dans son système */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Titre de la liste + sélecteur de période */
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.panel-head h2 { margin: 0; }
+
+.period {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.period button {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.period button:hover { color: var(--text); }
+.period button.active { background: rgba(94, 231, 223, 0.14); color: var(--accent); }
+
+/* Boutons modifier et supprimer */
+.actions { display: flex; gap: 4px; }
+
+.delete,
+.edit {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dim);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.delete:hover { background: rgba(255, 77, 109, 0.12); color: var(--ko); }
+.edit:hover { background: rgba(94, 231, 223, 0.12); color: var(--accent); }
+
+/* Formulaire de modification dans la liste */
+.site-edit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid rgba(94, 231, 223, 0.3);
+  border-radius: 10px;
+  background: rgba(94, 231, 223, 0.04);
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field-label {
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.site-edit input { min-width: 0; }
+.field-url input { font-family: var(--mono); font-size: 13px; }
+
+.edit-buttons { display: flex; gap: 8px; }
+.btn-save,
+.btn-cancel {
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, opacity 0.2s;
+}
+.btn-save {
+  border: none;
+  background: linear-gradient(135deg, var(--ok), var(--accent));
+  color: #04110c;
+}
+.btn-save:disabled { opacity: 0.5; cursor: wait; }
+.btn-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--dim);
+}
+.btn-cancel:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.15); }
+
+.edit-hint,
+.edit-msg { grid-column: 1 / -1; margin: 0; font-size: 12px; }
+.edit-hint { color: var(--dim); }
+.edit-msg { color: var(--ko); }
+.edit-msg:empty { display: none; }
+
+/* Téléphone : les champs passent l'un sous l'autre */
+@media (max-width: 700px) {
+  .site-edit { grid-template-columns: 1fr; }
+  .edit-buttons { justify-content: flex-end; }
 }
