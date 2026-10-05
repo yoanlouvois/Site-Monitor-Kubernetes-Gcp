@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cleanup
+  namespace: site-monitor
+spec:
+  schedule: "0 3 * * *"
+  timeZone: "Europe/Paris"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: cleanup
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: cleanup
+              image: postgres:16-alpine
+              command:
+                - psql
+                - -v
+                - ON_ERROR_STOP=1
+                - -c
+                - DELETE FROM checks WHERE checked_at < now() - interval '30 days';
+              env:
+                - name: PGHOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: site-monitor-config
+                      key: POSTGRES_HOST
+                - name: PGDATABASE
+                  valueFrom:
+                    configMapKeyRef:
+                      name: site-monitor-config
+                      key: POSTGRES_DB
+                - name: PGUSER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: site-monitor-config
+                      key: POSTGRES_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: site-monitor-secrets
+                      key: POSTGRES_PASSWORD
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 64Mi
