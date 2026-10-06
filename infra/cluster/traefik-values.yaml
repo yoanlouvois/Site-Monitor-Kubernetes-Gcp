@@ -1,0 +1,26 @@
+# Traefik sur le cluster GCP (kubeadm).
+# Traefik est exposé en NodePort,
+# un port fixe sur chaque nœud.
+
+# Gateway API et Gateway par défaut
+providers:
+  kubernetesGateway:
+    enabled: true
+gateway:
+  listeners:
+    web:
+      namespacePolicy:
+        from: All
+
+# Deux réplicas : si un worker tombe, l'entrée HTTP reste disponible
+deployment:
+  replicas: 2
+
+# Un port fixe sur chaque nœud (non joignable depuis internet)
+service:
+  type: NodePort
+ports:
+  web:
+    nodePort: 30080
+  websecure:
+    nodePort: 30443
