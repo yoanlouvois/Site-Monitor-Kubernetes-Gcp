@@ -26,3 +26,8 @@ output "registry" {
   description = "Préfixe des images dans Artifact Registry"
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
 }
+
+output "lb_ip" {
+  description = "Adresse publique de l'application"
+  value       = google_compute_global_address.lb.address
+}

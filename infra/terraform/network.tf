@@ -99,3 +99,19 @@ resource "google_compute_firewall" "iap_apiserver" {
     metadata = "INCLUDE_ALL_METADATA"
   }
 }
+
+# 4. Load balancer : les proxys et les health checks de Google vers le NodePort de Traefik
+resource "google_compute_firewall" "lb_to_nodeport" {
+  name      = "site-monitor-allow-lb-nodeport"
+  network   = google_compute_network.vpc.id
+  direction = "INGRESS"
+
+  # Plages documentées des proxys du load balancer et des health checks Google
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+  target_tags   = ["k8s-node"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["30080"]
+  }
+}
