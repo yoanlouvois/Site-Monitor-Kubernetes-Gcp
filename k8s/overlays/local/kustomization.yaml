@@ -1,0 +1,17 @@
+# Environnement local : cluster kind.
+# Les images sont chargées dans les nœuds avec "kind load docker-image".
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: site-monitor/api
+    newTag: "0.1.0"
+  - name: site-monitor/checker
+    newTag: "0.1.0"
+  - name: site-monitor/alerter
+    newTag: "0.1.0"
+  - name: site-monitor/frontend
+    newTag: "0.1.1"

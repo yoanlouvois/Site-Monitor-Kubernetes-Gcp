@@ -1,0 +1,31 @@
+# Environnement GCP : cluster kubeadm sur Compute Engine.
+# Les images viennent d'Artifact Registry ; les disques sont des Persistent Disks (driver CSI).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: site-monitor/api
+    newName: europe-west9-docker.pkg.dev/site-monitor-prk26/site-monitor/api
+    newTag: "0.1.0"
+  - name: site-monitor/checker
+    newName: europe-west9-docker.pkg.dev/site-monitor-prk26/site-monitor/checker
+    newTag: "0.1.0"
+  - name: site-monitor/alerter
+    newName: europe-west9-docker.pkg.dev/site-monitor-prk26/site-monitor/alerter
+    newTag: "0.1.0"
+  - name: site-monitor/frontend
+    newName: europe-west9-docker.pkg.dev/site-monitor-prk26/site-monitor/frontend
+    newTag: "0.1.1"
+
+patches:
+  # Un disque pd-balanced fait au minimum 10 Go
+  - target:
+      kind: StatefulSet
+      name: postgres
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 10Gi
