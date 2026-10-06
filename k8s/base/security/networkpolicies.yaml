@@ -1,0 +1,179 @@
+# 1. Tout interdire par défaut, en entrée comme en sortie
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# 2. DNS pour tous les pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# 3. Frontend : reçoit de Traefik, parle à l'api
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend
+spec:
+  podSelector:
+    matchLabels: { app: frontend }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: api }
+      ports:
+        - { protocol: TCP, port: 8000 }
+---
+# 4. Api : reçoit du frontend, parle à Postgres
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api
+spec:
+  podSelector:
+    matchLabels: { app: api }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app: frontend }
+      ports:
+        - { protocol: TCP, port: 8000 }
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: postgres }
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+# 5. Postgres : reçoit de l'api, du checker et du cleanup
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres
+spec:
+  podSelector:
+    matchLabels: { app: postgres }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - { key: app, operator: In, values: [api, checker, cleanup] }
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+# 6. Redis : reçoit du checker (producteur) et de l'alerter (consommateur)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis
+spec:
+  podSelector:
+    matchLabels: { app: redis }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - { key: app, operator: In, values: [checker, alerter] }
+      ports:
+        - { protocol: TCP, port: 6379 }
+---
+# 7. Checker : Postgres, Redis, et l'Internet PUBLIC uniquement (anti-SSRF)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: checker
+spec:
+  podSelector:
+    matchLabels: { app: checker }
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: postgres }
+      ports:
+        - { protocol: TCP, port: 5432 }
+    - to:
+        - podSelector:
+            matchLabels: { app: redis }
+      ports:
+        - { protocol: TCP, port: 6379 }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8          # VPC, pods, services
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16      # serveur de métadonnées GCP
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+      ports:
+        - { protocol: TCP, port: 80 }
+        - { protocol: TCP, port: 443 }
+---
+# 8. Alerter : Redis et Discord (HTTPS public)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: alerter
+spec:
+  podSelector:
+    matchLabels: { app: alerter }
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: redis }
+      ports:
+        - { protocol: TCP, port: 6379 }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10, 127.0.0.0/8]
+      ports:
+        - { protocol: TCP, port: 443 }
+---
+# 9. Cleanup : Postgres uniquement
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cleanup
+spec:
+  podSelector:
+    matchLabels: { app: cleanup }
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: postgres }
+      ports:
+        - { protocol: TCP, port: 5432 }
