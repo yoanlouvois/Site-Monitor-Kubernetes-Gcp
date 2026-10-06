@@ -6,7 +6,7 @@ $Cluster = "site-monitor"
 $Images = [ordered]@{
     "api"      = @{ Version = "0.1.0"; Dockerfile = "api/Dockerfile";     Context = "." }
     "checker"  = @{ Version = "0.1.0"; Dockerfile = "checker/Dockerfile"; Context = "." }
-    "alerter"  = @{ Version = "0.1.0"; Dockerfile = "alerter/Dockerfile"; Context = "." }
+    "alerter"  = @{ Version = "0.1.1"; Dockerfile = "alerter/Dockerfile"; Context = "." }
     "frontend" = @{ Version = "0.1.1"; Dockerfile = "frontend/Dockerfile"; Context = "./frontend" }
 }
 $GatewayApiCrds = "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"

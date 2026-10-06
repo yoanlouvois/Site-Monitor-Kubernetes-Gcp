@@ -12,6 +12,6 @@ images:
   - name: site-monitor/checker
     newTag: "0.1.0"
   - name: site-monitor/alerter
-    newTag: "0.1.0"
+    newTag: "0.1.1"
   - name: site-monitor/frontend
     newTag: "0.1.1"

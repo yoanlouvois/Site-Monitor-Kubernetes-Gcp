@@ -15,7 +15,7 @@ images:
     newTag: "0.1.0"
   - name: site-monitor/alerter
     newName: europe-west9-docker.pkg.dev/site-monitor-prk26/site-monitor/alerter
-    newTag: "0.1.0"
+    newTag: "0.1.1"
   - name: site-monitor/frontend
     newName: europe-west9-docker.pkg.dev/site-monitor-prk26/site-monitor/frontend
     newTag: "0.1.1"

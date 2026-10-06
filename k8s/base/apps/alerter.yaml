@@ -42,12 +42,6 @@ spec:
                 secretKeyRef:
                   name: site-monitor-secrets
                   key: DISCORD_WEBHOOK_URL
-            # Pas utilisé par l'alerter, mais exigé par common/config.py (voir README)
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: site-monitor-secrets
-                  key: POSTGRES_PASSWORD
           resources:
             requests:
               cpu: 50m
