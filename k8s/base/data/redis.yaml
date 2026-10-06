@@ -15,6 +15,17 @@ spec:
       labels:
         app: redis
     spec:
+      serviceAccountName: redis
+      # PSS : pas de jeton pour l'API Kubernetes
+      automountServiceAccountToken: false
+      # PSS : utilisateur "redis" de l'image alpine (UID 999, groupe 1000)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis
           image: redis:7-alpine
@@ -25,6 +36,19 @@ spec:
               command: ["redis-cli", "ping"]
             initialDelaySeconds: 2
             periodSeconds: 5
+          # PSS : aucun droit supplémentaire, système de fichiers en lecture seule
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # Sauvegarde RDB : survit à un redémarrage du conteneur, pas à la suppression du pod
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

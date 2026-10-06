@@ -25,3 +25,5 @@ resources:
   - routing/frontend-route.yaml
     # Sécurité
   - security/networkpolicies.yaml
+  - security/serviceaccounts.yaml
+  - security/rbac-viewer.yaml

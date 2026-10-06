@@ -19,6 +19,16 @@ spec:
     spec:
       hostname: alerter
       terminationGracePeriodSeconds: 30
+      serviceAccountName: alerter
+      # PSS : pas de jeton pour l'API Kubernetes (l'alerter n'en a pas besoin)
+      automountServiceAccountToken: false
+      # PSS : identité du pod (utilisateur "app" de l'image, UID 999)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: alerter
           image: site-monitor/alerter:0.1.0
@@ -45,3 +55,16 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+          # PSS : aucun droit supplémentaire, système de fichiers en lecture seule
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # Seul endroit inscriptible du conteneur
+        - name: tmp
+          emptyDir: {}

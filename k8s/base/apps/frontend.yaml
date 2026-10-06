@@ -15,6 +15,16 @@ spec:
       labels:
         app: frontend
     spec:
+      serviceAccountName: frontend
+      # PSS : pas de jeton pour l'API Kubernetes
+      automountServiceAccountToken: false
+      # PSS : utilisateur "nginx" de l'image unprivileged (UID 101)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: frontend
           image: site-monitor/frontend:0.1.1
@@ -40,6 +50,19 @@ spec:
             limits:
               cpu: 200m
               memory: 64Mi
+          # PSS : aucun droit supplémentaire, système de fichiers en lecture seule
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # nginx-unprivileged y écrit son PID et ses fichiers temporaires (proxy, client_body)
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

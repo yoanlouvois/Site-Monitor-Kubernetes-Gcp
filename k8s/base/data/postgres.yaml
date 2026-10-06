@@ -27,6 +27,20 @@ spec:
       labels:
         app: postgres
     spec:
+      serviceAccountName: postgres
+      # PSS : pas de jeton pour l'API Kubernetes
+      automountServiceAccountToken: false
+      # PSS : utilisateur "postgres" de l'image alpine (UID 70)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        # Le kubelet donne le disque au groupe 70 (remplace le chown que faisait l'image en root)
+        fsGroup: 70
+        # Ne refaire ce chown que si la racine du volume n'a pas déjà le bon groupe
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
           image: postgres:16-alpine
@@ -56,15 +70,30 @@ spec:
             - name: init
               mountPath: /docker-entrypoint-initdb.d
               readOnly: true
+            # Socket Unix et fichier de verrou (utilisé aussi par pg_isready)
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 5
             periodSeconds: 5
+          # PSS : aucun droit supplémentaire, système de fichiers en lecture seule
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       volumes:
         - name: init
           configMap:
             name: postgres-init
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: data

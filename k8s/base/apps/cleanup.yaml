@@ -18,6 +18,16 @@ spec:
             app: cleanup
         spec:
           restartPolicy: Never
+          serviceAccountName: cleanup
+          # PSS : pas de jeton pour l'API Kubernetes
+          automountServiceAccountToken: false
+          # PSS : utilisateur "postgres" de l'image alpine (UID 70)
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: cleanup
               image: postgres:16-alpine
@@ -55,3 +65,9 @@ spec:
                 limits:
                   cpu: 200m
                   memory: 64Mi
+              # PSS : aucun droit supplémentaire, système de fichiers en lecture seule
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
