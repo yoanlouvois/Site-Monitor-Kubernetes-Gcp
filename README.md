@@ -43,12 +43,16 @@ L'application vérifie chaque minute que les sites enregistrés répondent, cons
 
 ## Architecture GCP
 
-<p align="center">
-  <!-- Remplacer par l'image du diagramme draw.io -->
-  <img src="URL_DU_DIAGRAMME" alt="Architecture GCP de Site Monitor" width="900" />
-</p>
-
 Toute l'infrastructure est décrite en **Terraform** (`infra/terraform/`) : elle se crée avec `terraform apply` et se supprime entièrement avec `terraform destroy`. Elle est déployée dans la région **europe-west9 (Paris)**.
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/0546cef6-47d0-477a-884b-97651d170c59" alt="Architecture GCP de Site Monitor" width="700" />
+      <br /><sub>Le load balancer est le seul point d'entrée public ; l'administration passe par IAP, la sortie Internet par Cloud NAT</sub>
+    </td>
+  </tr>
+</table>
 
 | Catégorie | Ressource | Rôle |
 |---|---|---|
