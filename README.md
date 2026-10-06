@@ -17,6 +17,19 @@ L'application vérifie chaque minute que les sites enregistrés répondent, cons
   </tr>
 </table>
 
+## Sommaire
+
+- [Les services](#les-services)
+- [Architecture GCP](#architecture-gcp)
+- [Le cluster Kubernetes](#le-cluster-kubernetes)
+- [Sécurité](#sécurité)
+- [Lancer en local](#lancer-en-local)
+- [Déployer sur GCP](#déployer-sur-gcp)
+- [Tests et incident](#tests-et-incident)
+- [Limites et compromis](#limites-et-compromis)
+- [Évolutions possibles](#évolutions-possibles)
+- [Arborescence du dépôt](#arborescence-du-dépôt)
+
 ## Les services
 
 | Service | Rôle | Technologies |
@@ -28,6 +41,31 @@ L'application vérifie chaque minute que les sites enregistrés répondent, cons
 | **postgres** | Stocke les sites et l'historique des vérifications | PostgreSQL 16 |
 | **redis** | File d'événements entre le checker et l'alerter (groupe de consommateurs, livraison au moins une fois) | Redis 7 |
 
+## Architecture GCP
+
+<!-- Diagramme draw.io (image) : Internet → LB → VM → pods, IAP sur le côté pour l'admin -->
+<!-- Phrase : toute l'infrastructure est décrite en Terraform (infra/terraform/) -->
+<!-- Tableau Ressource / Rôle : VPC + sous-réseau privé, Cloud NAT, 3 VM Shielded,
+     IAP, Application Load Balancer + certificat géré, Artifact Registry, Persistent Disk -->
+
+## Le cluster Kubernetes
+
+<!-- Tableau Composant / Choix / Pourquoi : kubeadm, Cilium, Gateway API + Traefik,
+     CSI Persistent Disk, credential provider, metrics-server + HPA, Kustomize -->
+
+### Le trajet d'une requête
+
+<!-- Navigateur → HTTPS (sslip.io) → Load Balancer (TLS) → NodePort 30080 → Traefik → frontend → api
+     sslip.io, certificat géré par Google, redirection HTTP→HTTPS, TLS 1.2+ -->
+
+### Autoscaling
+
+<!-- Résultat du test de charge : 2 → 4 → 8 pods en 45 s, plafond respecté, descente après 5 min -->
+
+## Sécurité
+
+<!-- Tableau par couche (défense en profondeur) :
+     Infrastructure GCP /
 
 ## Lancer en local
 
