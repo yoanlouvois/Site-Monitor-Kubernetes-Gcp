@@ -1,0 +1,5 @@
+# metrics-server sur un cluster kubeadm.
+# Les kubelets utilisent des certificats auto-signés : on désactive leur vérification.
+# Limite assumée (voir README) : la bonne correction est serverTLSBootstrap sur les kubelets.
+args:
+  - --kubelet-insecure-tls
