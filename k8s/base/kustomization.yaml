@@ -16,6 +16,7 @@ resources:
   - data/postgres.yaml
   # Applications
   - apps/api.yaml
+  - apps/api-hpa.yaml
   - apps/alerter.yaml
   - apps/checker.yaml
   - apps/cleanup.yaml
