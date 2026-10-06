@@ -70,17 +70,54 @@ Toute l'infrastructure est décrite en **Terraform** (`infra/terraform/`) : elle
 
 ## Le cluster Kubernetes
 
-<!-- Tableau Composant / Choix / Pourquoi : kubeadm, Cilium, Gateway API + Traefik,
-     CSI Persistent Disk, credential provider, metrics-server + HPA, Kustomize -->
+Le cluster compte **3 nœuds** (1 control plane, 2 workers) installés avec kubeadm, avec containerd comme runtime. L'application tourne dans le namespace `site-monitor`.
+
+| Composant | Choix | Pourquoi |
+|---|---|---|
+| **Installation** | kubeadm v1.37 | Meilleur controle sur les noeuds et les configurations (personnalisé) |
+| **Réseau des pods** | Cilium (eBPF) | CNI performant qui applique les NetworkPolicies |
+| **Entrée HTTP** | Gateway API + Traefik | Successeur standard d'Ingress (ingress-nginx est en fin de vie) ; Traefik exposé en NodePort derrière le load balancer |
+| **Stockage** | Driver CSI Persistent Disk | Volumes créés à la demande pour Postgres (StorageClass `pd-balanced`) |
+| **Accès aux images** | Credential provider du kubelet | Les nœuds lisent le registre privé avec un jeton temporaire, sans aucune clé stockée |
+| **Charges de travail** | Deployments, StatefulSet, CronJobs | api, frontend, alerter et redis en Deployment ; Postgres en StatefulSet (identité et disque stables) ; checker et nettoyage en CronJob |
+| **Autoscaling** | metrics-server + HPA | L'api passe de 2 à 8 pods selon sa consommation CPU |
+| **Déploiement** | Kustomize (base + overlays) | Un seul jeu de manifests ; les différences entre kind et GCP (registre, taille du disque) tiennent dans un overlay |
+
 
 ### Le trajet d'une requête
 
-<!-- Navigateur → HTTPS (sslip.io) → Load Balancer (TLS) → NodePort 30080 → Traefik → frontend → api
-     sslip.io, certificat géré par Google, redirection HTTP→HTTPS, TLS 1.2+ -->
+```
+Navigateur ─HTTPS─▶ Load Balancer ─HTTP─▶ NodePort 30080 ─▶ Traefik ─▶ frontend ─/api/─▶ api ─▶ postgres
+                    (TLS terminé ici)     (workers)         (Gateway API)  (nginx)
+```
+
+- **Nom de domaine et certificat** : un certificat géré par Google exige un nom de domaine. Le projet utilise **sslip.io**, un service DNS public qui transforme une adresse IP en nom de domaine (`34-1-2-3.sslip.io` → `34.1.2.3`). Il donne un domaine valide et gratuit pointant vers l'IP statique du load balancer, sans acheter de domaine.
+- **HTTPS uniquement** : les requêtes HTTP sont redirigées vers HTTPS (301), et une politique SSL impose **TLS 1.2 minimum** avec des suites de chiffrement modernes.
+- **Un seul point d'entrée** : seul le frontend est exposé via la Gateway. L'api n'est joignable qu'à travers le proxy nginx du frontend (`/api/`), jamais directement depuis Internet.
 
 ### Autoscaling
 
-<!-- Résultat du test de charge : 2 → 4 → 8 pods en 45 s, plafond respecté, descente après 5 min -->
+L'api est pilotée par un **HorizontalPodAutoscaler** : entre 2 et 8 pods, avec une cible de **60 % du CPU demandé** (`requests` de 100m par pod). Le nombre de replicas n'est volontairement **pas** défini dans le Deployment : le HPA en est le seul propriétaire, et un `kubectl apply` ne peut pas annuler sa décision.
+
+**Test de charge** : 8 boucles de requêtes en parallèle sur `GET /sites`, lancées depuis un pod du cluster.
+
+| Temps | CPU moyen / cible | Pods | Ce qui se passe |
+|---|---|---|---|
+| 0 s | 5 % / 60 % | 2 | Au repos, minimum garanti |
+| +15 s | 232 % / 60 % | 2 | La charge arrive, le HPA mesure |
+| +30 s | 355 % / 60 % | 4 | Le nombre de pods double (montée maximale par période) |
+| +45 s | 181 % / 60 % | **8** | Plafond atteint : le HPA s'arrête à `maxReplicas` |
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="URL_CAPTURE_TEST_DE_CHARGE" alt="Test de charge du HPA" width="700" />
+      <br /><sub>Le HPA passe de 2 à 8 pods en 45 secondes pendant le test de charge</sub>
+    </td>
+  </tr>
+</table>
+
+Après l'arrêt de la charge, le nombre de pods redescend à 2 au bout d'une **fenêtre de stabilisation de 5 minutes**, qui évite de supprimer des pods pour les recréer aussitôt si la charge revient. Le plafond de 8 pods empêche qu'un pic (ou une attaque) remplisse les nœuds. Le nombre de nœuds reste fixe : il n'y a pas de Cluster Autoscaler (voir [Limites](#limites-et-compromis)).
 
 ## Sécurité
 
