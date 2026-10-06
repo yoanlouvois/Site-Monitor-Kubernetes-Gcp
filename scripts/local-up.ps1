@@ -15,8 +15,8 @@ function Step($message) { Write-Host "`n==> $message" -ForegroundColor Cyan }
 function Check($what) { if ($LASTEXITCODE -ne 0) { throw "Échec : $what (code $LASTEXITCODE)" } }
 
 # 0. Le secret n'est pas dans Git : il doit exister avant de commencer
-if (-not (Test-Path "k8s/config/secret.yaml")) {
-    throw "k8s/config/secret.yaml manquant : copie k8s/config/secret.example.yaml et remplis les vraies valeurs."
+if (-not (Test-Path "k8s/base/config/secret.yaml")) {
+    throw "k8s/base/config/secret.yaml manquant : copie k8s/base/config/secret.example.yaml et remplis les vraies valeurs."
 }
 
 # 1. Le cluster
@@ -53,7 +53,7 @@ Check "installation de Traefik"
 
 # 4. L'application
 Step "Application (kubectl apply -k k8s/)"
-kubectl apply -k k8s/
+kubectl apply -k k8s/overlays/local
 Check "apply"
 
 Step "Attente que tout soit prêt"
