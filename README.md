@@ -74,7 +74,7 @@ Le cluster compte **3 nœuds** (1 control plane, 2 workers) installés avec kube
 
 | Composant | Choix | Pourquoi |
 |---|---|---|
-| **Installation** | kubeadm v1.37 | Meilleur controle sur les noeuds et les configurations (personnalisé) |
+| **Installation** | kubeadm v1.37 | Contrôle complet sur les nœuds et la configuration du cluster (réseau, runtime, composants) |
 | **Réseau des pods** | Cilium (eBPF) | CNI performant qui applique les NetworkPolicies |
 | **Entrée HTTP** | Gateway API + Traefik | Successeur standard d'Ingress (ingress-nginx est en fin de vie) ; Traefik exposé en NodePort derrière le load balancer |
 | **Stockage** | Driver CSI Persistent Disk | Volumes créés à la demande pour Postgres (StorageClass `pd-balanced`) |
@@ -101,18 +101,22 @@ L'api est pilotée par un **HorizontalPodAutoscaler** : entre 2 et 8 pods, avec 
 
 **Test de charge** : 8 boucles de requêtes en parallèle sur `GET /sites`, lancées depuis un pod du cluster.
 
-| Temps | CPU moyen / cible | Pods | Ce qui se passe |
+| Temps | CPU moyen / cible | Pods | Décision du HPA (événements Kubernetes) |
 |---|---|---|---|
-| 0 s | 5 % / 60 % | 2 | Au repos, minimum garanti |
-| +15 s | 232 % / 60 % | 2 | La charge arrive, le HPA mesure |
-| +30 s | 355 % / 60 % | 4 | Le nombre de pods double (montée maximale par période) |
-| +45 s | 181 % / 60 % | **8** | Plafond atteint : le HPA s'arrête à `maxReplicas` |
+| Avant le test | 5 % / 60 % | 2 | Au repos, minimum garanti |
+| Début de la charge | 232 % / 60 % | 2 | Cible dépassée, le HPA mesure |
+| T | 355 % / 60 % | **4** | `New size: 4` : utilisation CPU au-dessus de la cible |
+| T + 15 s | 181 % / 60 % | **8** | `New size: 8` : plafond `maxReplicas` atteint, le HPA s'arrête là |
 
 <table align="center">
   <tr>
-    <td align="center">
-      <img src="URL_CAPTURE_TEST_DE_CHARGE" alt="Test de charge du HPA" width="700" />
-      <br /><sub>Le HPA passe de 2 à 8 pods en 45 secondes pendant le test de charge</sub>
+    <td width="50%" align="center">
+      <img src="https://github.com/user-attachments/assets/067515d2-d0ee-4d49-ad04-1e6105ba03ad" alt="Suivi du HPA pendant le test de charge" />
+      <br /><sub>Utilisation CPU et nombre de pods pendant le test</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="https://github.com/user-attachments/assets/bcdb8546-f501-47b7-af47-d8e80642ccbe" alt="Événements de mise à l'échelle du HPA" />
+      <br /><sub>Décisions du HPA : 2 → 4 → 8 pods en 15 secondes</sub>
     </td>
   </tr>
 </table>
