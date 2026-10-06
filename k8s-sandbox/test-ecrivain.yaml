@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-ecrivain
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: k8s-worker-1
+  containers:
+    - name: test
+      image: busybox:1.36
+      command: ["sh", "-c", "echo \"Ecrit depuis k8s-worker-1 le $(date)\" > /data/preuve.txt && sleep 3600"]
+      volumeMounts:
+        - name: disque
+          mountPath: /data
+  volumes:
+    - name: disque
+      persistentVolumeClaim:
+        claimName: test-disque
