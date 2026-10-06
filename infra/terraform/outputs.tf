@@ -31,3 +31,8 @@ output "lb_ip" {
   description = "Adresse publique de l'application"
   value       = google_compute_global_address.lb.address
 }
+
+output "url" {
+  description = "Adresse HTTPS de l'application"
+  value       = "https://${local.domain}"
+}

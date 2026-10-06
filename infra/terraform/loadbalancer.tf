@@ -64,7 +64,7 @@ resource "google_compute_url_map" "web" {
 
 resource "google_compute_target_http_proxy" "web" {
   name    = "site-monitor-http-proxy"
-  url_map = google_compute_url_map.web.id
+  url_map = google_compute_url_map.https_redirect.id
 }
 
 # --- Point d'entrée public : IP + port 80 ---------------------------------
@@ -74,4 +74,52 @@ resource "google_compute_global_forwarding_rule" "http" {
   ip_address            = google_compute_global_address.lb.id
   port_range            = "80"
   target                = google_compute_target_http_proxy.web.id
+}
+
+# --- HTTPS ----------------------------------------------------------------
+locals {
+  # sslip.io : 34.1.2.3 → 34-1-2-3.sslip.io (DNS automatique, sans domaine à acheter)
+  domain = "${replace(google_compute_global_address.lb.address, ".", "-")}.sslip.io"
+}
+
+# Certificat géré par Google : émis et renouvelé automatiquement
+resource "google_compute_managed_ssl_certificate" "web" {
+  name = "site-monitor-cert"
+
+  managed {
+    domains = [local.domain]
+  }
+}
+
+# Politique TLS : TLS 1.2 minimum, uniquement des chiffrements modernes
+resource "google_compute_ssl_policy" "modern" {
+  name            = "site-monitor-tls"
+  profile         = "MODERN"
+  min_tls_version = "TLS_1_2"
+}
+
+resource "google_compute_target_https_proxy" "web" {
+  name             = "site-monitor-https-proxy"
+  url_map          = google_compute_url_map.web.id
+  ssl_certificates = [google_compute_managed_ssl_certificate.web.id]
+  ssl_policy       = google_compute_ssl_policy.modern.id
+}
+
+resource "google_compute_global_forwarding_rule" "https" {
+  name                  = "site-monitor-https"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  ip_address            = google_compute_global_address.lb.id
+  port_range            = "443"
+  target                = google_compute_target_https_proxy.web.id
+}
+
+# Port 80 : redirige toute requête HTTP vers HTTPS (code 301)
+resource "google_compute_url_map" "https_redirect" {
+  name = "site-monitor-https-redirect"
+
+  default_url_redirect {
+    https_redirect         = true
+    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
+    strip_query            = false
+  }
 }
