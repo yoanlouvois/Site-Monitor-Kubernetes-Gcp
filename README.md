@@ -125,8 +125,30 @@ Après l'arrêt de la charge, le nombre de pods redescend à 2 au bout d'une **f
 
 ## Sécurité
 
-<!-- Tableau par couche (défense en profondeur) :
-     Infrastructure GCP / Réseau Kubernetes / Pods / Identités / Application / Chaîne d'approvisionnement -->
+| Couche | Mesures |
+|---|---|
+| **Infrastructure GCP** | Aucune IP publique sur les VM ; pare-feu fermé par défaut, chaque ouverture limitée à une source précise (IAP, sondes du load balancer) ; accès administrateur via IAP et OS Login ; Shielded VM ; comptes de service au moindre privilège |
+| **Exposition** | Load balancer comme seul point d'entrée public ; HTTPS avec certificat géré, TLS 1.2 minimum ; l'api n'est jamais exposée directement |
+| **Réseau Kubernetes** | NetworkPolicies : tout est interdit par défaut, chaque flux est autorisé un par un ; **protection anti-SSRF** du checker (serveur de métadonnées et plages privées bloqués) |
+| **Pods** | Pod Security Standards `restricted` en mode `enforce` : non-root, `capabilities: drop ALL`, pas d'élévation de privilèges, seccomp ; système de fichiers en lecture seule |
+| **Identités** | Un ServiceAccount par service, aucun jeton monté, aucun droit RBAC ; un Role en lecture seule (sans accès aux Secrets) pour les humains |
+| **Application** | Requêtes SQL paramétrées ; CSP et `textContent` contre le XSS ; chaque service ne reçoit que les secrets dont il a besoin (l'alerter n'a pas le mot de passe de la base) |
+| **Secrets** | Jamais versionnés (`.env`, `secret.yaml`, kubeconfig, état Terraform exclus de Git) ; modèles `.example` fournis |
+| **Chaîne d'approvisionnement** | Registre d'images privé, tags immuables, scan des vulnérabilités avec Trivy |
+
+### Analyse des vulnérabilités (Trivy)
+
+```powershell
+docker run --rm -v //var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL --ignore-unfixed <image>
+```
+
+Le scan de `postgres:16-alpine` illustre pourquoi un rapport de vulnérabilités doit être **analysé**, et pas seulement compté :
+
+- **Système Alpine : 0 CVE.**
+- **Binaire `gosu` : 22 CVE (dont 1 critique).** gosu est un petit utilitaire écrit en Go, utilisé par l'image pour passer de root à l'utilisateur `postgres` au démarrage. Toutes ses CVE se trouvent dans la **bibliothèque standard de Go** avec laquelle il a été compilé : `crypto/tls`, `net/http`, `net/mail`, `html/template`… gosu n'utilise aucun de ces paquets (il ne fait qu'un `setuid` puis un `exec`). Le code vulnérable est présent dans le binaire, mais **jamais atteignable**.
+- **De plus, gosu n'est jamais exécuté dans ce déploiement.** Postgres démarre directement en utilisateur non-root (UID 70), donc l'image n'a pas besoin de changer d'utilisateur. Même lancé par un attaquant, gosu serait inutile : sans la capability `SETUID` et avec `allowPrivilegeEscalation: false`, il ne peut changer d'identité.
+
+**Décision : risque accepté et documenté.** Le durcissement des pods neutralise une catégorie de risques que le scanner ne peut pas évaluer. En production, cette décision serait formalisée dans un fichier `.trivyignore` justifiant chaque exception, ou dans un document **VEX** (*Vulnerability Exploitability eXchange*), le format standard pour déclarer qu'une vulnérabilité présente n'est pas exploitable dans un contexte donné. Elle serait réévaluée à chaque nouvelle version de l'image.
 
 ## Lancer en local
 
