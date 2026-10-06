@@ -197,13 +197,44 @@ Les versions des images sont définies dans `k8s/overlays/local/kustomization.ya
 
 ## Déployer sur GCP
 
-<!-- Étapes courtes + renvoi vers infra/kubeadm/README.md :
-     1. terraform apply
-     2. kubeadm + Cilium
-     3. Composants du cluster (credential provider, CSI, Traefik, metrics-server)
-     4. Push des images dans Artifact Registry
-     5. kubectl apply -k k8s/overlays/gcp
-     6. terraform destroy -->
+**Prérequis** : un projet GCP avec la facturation activée, `gcloud` (authentifié), `terraform`, `kubectl` et `helm`. Le guide détaillé, avec toutes les commandes, se trouve dans [`infra/kubeadm/README.md`](infra/kubeadm/README.md).
+
+1. **Créer l'infrastructure** : renseigner `infra/terraform/terraform.tfvars` (identifiant du projet, zone), puis :
+
+```powershell
+   terraform -chdir=infra/terraform init
+   terraform -chdir=infra/terraform apply
+```
+
+2. **Installer le cluster** : préparer les 3 VM (`prepare-node.sh`), initialiser le control plane avec `kubeadm init`, installer Cilium, puis faire rejoindre les workers avec `kubeadm join`. `kubectl` passe par un tunnel IAP vers l'API server.
+
+3. **Installer les composants du cluster** (`infra/cluster/`) : le credential provider pour Artifact Registry (`setup-registry-auth.sh`), le driver CSI Persistent Disk et sa StorageClass, la Gateway API et Traefik, puis metrics-server.
+
+4. **Publier les images** dans Artifact Registry :
+
+```powershell
+   gcloud auth configure-docker europe-west9-docker.pkg.dev
+   docker tag site-monitor/api:0.1.0 europe-west9-docker.pkg.dev/<PROJET>/site-monitor/api:0.1.0
+   docker push europe-west9-docker.pkg.dev/<PROJET>/site-monitor/api:0.1.0
+```
+
+   (même chose pour `checker`, `alerter` et `frontend`, avec les versions de `k8s/overlays/gcp/kustomization.yaml`)
+
+5. **Déployer l'application** :
+
+```powershell
+   kubectl apply -k k8s/overlays/gcp
+```
+
+   L'URL HTTPS est affichée par `terraform -chdir=infra/terraform output url`. Le certificat géré peut mettre de 15 à 60 minutes à devenir actif.
+
+6. **Tout supprimer** une fois terminé, pour arrêter la facturation :
+
+```powershell
+   terraform -chdir=infra/terraform destroy
+```
+
+> Pour une pause courte, arrêter les VM suffit (`gcloud compute instances stop ...`), mais les disques et le load balancer restent facturés.
 
 ## Tests et incident
 
