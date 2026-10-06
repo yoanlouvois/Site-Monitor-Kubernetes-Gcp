@@ -51,6 +51,13 @@ helm repo add traefik https://traefik.github.io/charts --force-update | Out-Null
 helm upgrade --install traefik traefik/traefik -n traefik --create-namespace -f k8s/local/traefik-values.yaml --wait
 Check "installation de Traefik"
 
+# Metrics-server est nécessaire pour le HPA (Horizontal Pod Autoscaler)
+
+Step "metrics-server (pour le HPA)"
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ --force-update | Out-Null
+helm upgrade --install metrics-server metrics-server/metrics-server -n kube-system --set "args={--kubelet-insecure-tls}" --wait
+Check "installation de metrics-server"
+
 # 4. L'application
 Step "Application (kubectl apply -k k8s/)"
 kubectl apply -k k8s/overlays/local
