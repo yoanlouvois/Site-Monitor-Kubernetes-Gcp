@@ -70,8 +70,13 @@ resource "google_compute_instance" "nodes" {
   allow_stopping_for_update = true
 
   lifecycle {
-    # Ne pas recréer les nœuds à chaque nouvelle image Ubuntu publiée
-    ignore_changes = [boot_disk[0].initialize_params[0].image]
+    ignore_changes = [
+      # Ne pas recréer les nœuds à chaque nouvelle image Ubuntu publiée
+      boot_disk[0].initialize_params[0].image,
+      # Les disques des PVC sont attachés par le driver CSI de Kubernetes :
+      # Terraform ne doit jamais les détacher
+      attached_disk,
+    ]
   }
 
   # Le NAT doit exister pour que les VM puissent installer des paquets
