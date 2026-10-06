@@ -238,22 +238,69 @@ Les versions des images sont définies dans `k8s/overlays/local/kustomization.ya
 
 ## Tests et incident
 
-<!-- Tests : alerte de bout en bout, test de charge HPA, blocages NetworkPolicies et PSS
-     Incident : 504 → Terraform détachait le disque Postgres → ignore_changes
-     → leçon : un seul propriétaire par ressource -->
+### Tests réalisés
+
+| Test | Méthode | Résultat |
+|---|---|---|
+| **Alerte de bout en bout** | Un site passe de UP à DOWN (domaine `.invalid`), puis revient | Alerte reçue sur Discord à chaque changement d'état ; toute la chaîne api → Postgres → checker → Redis → alerter fonctionne avec le durcissement en place |
+| **Autoscaling** | 8 boucles de requêtes en parallèle sur l'api | 2 → 4 → 8 pods, plafond respecté (voir [Autoscaling](#autoscaling)) |
+| **NetworkPolicies** | Pod sans label autorisé vers Postgres et l'api ; pod avec le label du checker vers le serveur de métadonnées | Connexions bloquées ; Internet public toujours accessible au checker |
+| **Pod Security Standards** | Création d'un pod `busybox` qui tourne en root | Refusé : `violates PodSecurity "restricted:latest"` |
+| **RBAC** | `kubectl auth can-i --as=system:serviceaccount:site-monitor:api` | Aucun droit ; le Role de lecture ne donne pas accès aux Secrets |
+| **Lecture seule** | `touch /test` dans le conteneur de l'api | `Read-only file system` |
+
+### Incident : la base de données perdue après un `terraform apply`
+
+| | |
+|---|---|
+| **Symptôme** | L'interface affiche « liaison API perdue » et le load balancer renvoie des 504. Les logs de Postgres montrent des erreurs d'entrée/sortie : `could not open file "global/pg_filenode.map"`. |
+| **Diagnostic** | Les premières pistes (réseau entre les nœuds, état de Cilium) étaient fausses. L'erreur venait du disque : le volume de Postgres n'était plus lisible, alors que le pod tournait toujours. |
+| **Cause** | Le disque Persistent Disk est créé et attaché par le **driver CSI**, donc par Kubernetes. Terraform ne le connaissait pas : à l'`apply` suivant, il a vu un disque « en trop » sur `k8s-worker-1` et l'a **détaché** pour revenir à sa configuration. Le CSI l'a rattaché, mais le montage dans le pod était devenu invalide. |
+| **Correction** | `lifecycle { ignore_changes = [attached_disk] }` sur les VM : Terraform ne gère plus les disques attachés. Puis suppression du pod `postgres-0`, recréé par le StatefulSet avec un montage propre. Aucune donnée perdue. |
+| **Retour d'expérience** | **Chaque attribut doit avoir un seul propriétaire.** Deux outils qui gèrent la même chose finissent par s'annuler l'un l'autre. C'est le même principe qui a guidé l'autoscaling : `replicas` a été retiré du Deployment pour que le HPA soit seul à décider du nombre de pods. |
 
 ## Limites et compromis
 
-<!-- kubeadm plutôt que GKE, un seul control plane, Postgres sur un seul pod,
-     metrics-server en insecure-tls, Redis sans persistance ni mot de passe,
-     checker limité aux ports 80/443, TLS terminé au LB, audit non activé,
-     pas d'authentification, images épinglées par tag et non par digest -->
+| Limite | En production |
+|---|---|
+| **Un seul control plane** : s'il tombe, le cluster ne peut plus être modifié (les pods continuent de tourner) | 3 control planes sur plusieurs zones, ou un service managé (GKE) |
+| **Postgres sur un seul pod**, sans réplica ni sauvegarde automatique | Cloud SQL, ou un opérateur (CloudNativePG) avec réplication et sauvegardes |
+| **Redis sans persistance** : les alertes en attente sont perdues si le pod est supprimé | Un volume persistant, ou Memorystore |
+| **Pas de Cluster Autoscaler** : le HPA ajuste les pods, mais le nombre de nœuds est fixe | Workers dans un Managed Instance Group avec Cluster Autoscaler |
+| **Pas d'authentification** : l'application est publique | IAP ou Cloud Armor devant le load balancer |
+| **`admin.conf`** (tous les droits) utilisé pour administrer le cluster | Une identité par personne (OIDC) avec des droits RBAC adaptés |
+| **Checker limité aux ports 80 et 443** (protection anti-SSRF) : un site sur un autre port apparaît en panne | Compromis assumé ; ports supplémentaires à autoriser explicitement si besoin |
 
 ## Évolutions possibles
 
-<!-- GitOps avec Argo CD (+ Sealed Secrets / External Secrets), CI avec scan Trivy bloquant,
-     Prometheus et Grafana, IAP ou Cloud Armor devant l'application, comparaison GKE Autopilot -->
+| Évolution | Apport |
+|---|---|
+| **GitOps avec Argo CD** | Le cluster se synchronise seul sur l'overlay versionné dans Git : chaque changement passe par une pull request relue, la dérive est détectée et corrigée, et aucun identifiant du cluster ne sort du cluster |
+| **Secrets compatibles GitOps** (Sealed Secrets ou External Secrets Operator avec Google Secret Manager) | Plus aucun secret créé à la main : ils sont chiffrés dans Git, ou lus depuis un coffre-fort |
+| **CI GitHub Actions** | Build et push des images à chaque commit, scan Trivy **bloquant** sur les vulnérabilités critiques, pull request automatique de mise à jour du tag |
+| **Observabilité : Prometheus et Grafana** | Métriques de l'application et du cluster, tableaux de bord, alertes sur les erreurs et la latence |
+| **IAP ou Cloud Armor** devant l'application | Authentification des utilisateurs, filtrage des requêtes (WAF) et limitation de débit |
+| **Comparaison avec GKE Autopilot** | Mesurer ce que le service managé simplifie (control plane, nœuds, autoscaling) et ce qu'il coûte, par rapport au cluster kubeadm |
 
 ## Arborescence du dépôt
 
-<!-- tree simplifié sur 2 niveaux, un commentaire par dossier -->
+```
+.
+├── api/                  # Service api (FastAPI)
+├── checker/              # Vérification des sites (CronJob)
+├── alerter/              # Notifications Discord (consommateur Redis Streams)
+├── common/               # Code partagé : configuration, accès Postgres et Redis
+├── frontend/             # Interface web et proxy nginx
+├── db/                   # Schéma SQL (init.sql), utilisé par Compose et Kubernetes
+├── k8s/
+│   ├── base/             # Manifests communs : applications, données, routage, sécurité
+│   ├── overlays/         # Différences par environnement : local (kind) et gcp
+│   └── local/            # Configuration de kind et de Traefik en local
+├── infra/
+│   ├── terraform/        # Infrastructure GCP
+│   ├── kubeadm/          # Installation du cluster (scripts et guide)
+│   └── cluster/          # Composants du cluster : StorageClass, Traefik, metrics-server
+├── scripts/              # local-up.ps1 : environnement kind complet en une commande
+├── k8s-sandbox/          # Exercices et essais Kubernetes (hors application)
+└── docker-compose.yml    # Environnement de développement
+```
