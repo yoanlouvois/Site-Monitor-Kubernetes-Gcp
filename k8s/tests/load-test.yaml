@@ -1,0 +1,73 @@
+# Test de charge de l'api (HPA). Usage :
+#   kubectl apply -f k8s/tests/load-test.yaml
+#   kubectl delete -f k8s/tests/load-test.yaml
+# Hors de Kustomize : ne fait pas partie du déploiement normal.
+
+# Autorise le pod de test à joindre l'api (le namespace est en "tout interdit par défaut")
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: load-test
+  namespace: site-monitor
+spec:
+  podSelector:
+    matchLabels: { app: api }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app: load-test }
+      ports:
+        - { protocol: TCP, port: 8000 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: load-test-egress
+  namespace: site-monitor
+spec:
+  podSelector:
+    matchLabels: { app: load-test }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: api }
+      ports:
+        - { protocol: TCP, port: 8000 }
+---
+# Générateur de charge, conforme à Pod Security "restricted"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load-test
+  namespace: site-monitor
+  labels:
+    app: load-test
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534          # "nobody"
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: load
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          for i in 1 2 3 4 5 6 7 8; do
+            (while true; do wget -q -O /dev/null http://api:8000/sites; done) &
+          done
+          wait
+      resources:
+        requests: { cpu: 100m, memory: 32Mi }
+        limits: { cpu: "1", memory: 64Mi }
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
