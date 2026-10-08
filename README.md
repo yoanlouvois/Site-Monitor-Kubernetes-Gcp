@@ -82,6 +82,7 @@ Le cluster compte **3 nœuds** (1 control plane, 2 workers) installés avec kube
 | **Charges de travail** | Deployments, StatefulSet, CronJobs | api, frontend, alerter et redis en Deployment ; Postgres en StatefulSet (identité et disque stables) ; checker et nettoyage en CronJob |
 | **Autoscaling** | metrics-server + HPA | L'api passe de 2 à 8 pods selon sa consommation CPU |
 | **Déploiement** | Kustomize (base + overlays) | Un seul jeu de manifests ; les différences entre kind et GCP (registre, taille du disque) tiennent dans un overlay |
+| **Observabilité** | kube-prometheus-stack (Prometheus, Grafana) | Métriques du cluster, des nœuds et de chaque pod, avec historique et tableaux de bord |
 
 
 ### Le trajet d'une requête
@@ -122,6 +123,21 @@ L'api est pilotée par un **HorizontalPodAutoscaler** : entre 2 et 8 pods, avec 
 </table>
 
 Après l'arrêt de la charge, le nombre de pods redescend à 2 au bout d'une **fenêtre de stabilisation de 5 minutes**, qui évite de supprimer des pods pour les recréer aussitôt si la charge revient. Le plafond de 8 pods empêche qu'un pic (ou une attaque) remplisse les nœuds. Le nombre de nœuds reste fixe : il n'y a pas de Cluster Autoscaler (voir [Limites](#limites-et-compromis)).
+
+## Observabilité
+
+Prometheus collecte les métriques des nœuds (node-exporter), des conteneurs (kubelet) et de l'état des objets Kubernetes (kube-state-metrics) ; Grafana les affiche. Le monitoring tourne dans son propre namespace (`monitoring`), seul autorisé en Pod Security `privileged` car node-exporter doit lire les métriques du nœud. Grafana n'est pas exposé publiquement (accès par `kubectl port-forward`) et n'utilise pas le mot de passe par défaut du chart.
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="URL_DE_TA_CAPTURE" alt="Consommation CPU par pod de l'api et nombre de pods demandés par le HPA" width="800" />
+      <br /><sub>Test de charge vu dans Grafana : la consommation CPU dépasse la cible, le HPA passe de 2 à 8 pods et la charge se répartit, puis il revient à 2 pods après la fenêtre de stabilisation</sub>
+    </td>
+  </tr>
+</table>
+
+Ces métriques couvrent l'utilisation des ressources (méthode USE). Les métriques de service (débit, erreurs, latence, méthode RED) sont la prochaine étape : via Traefik, sans modifier le code, ou en instrumentant l'api.
 
 ## Sécurité
 
