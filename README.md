@@ -131,7 +131,7 @@ Prometheus collecte les métriques des nœuds (node-exporter), des conteneurs (k
 <table align="center">
   <tr>
     <td align="center">
-      <img src="URL_DE_TA_CAPTURE" alt="Consommation CPU par pod de l'api et nombre de pods demandés par le HPA" width="800" />
+      <img src="https://github.com/user-attachments/assets/147a99dc-0ec4-4a74-8cf2-1cd0ba3671a9" alt="Consommation CPU par pod de l'api et nombre de pods demandés par le HPA" width="800" />
       <br /><sub>Test de charge vu dans Grafana : la consommation CPU dépasse la cible, le HPA passe de 2 à 8 pods et la charge se répartit, puis il revient à 2 pods après la fenêtre de stabilisation</sub>
     </td>
   </tr>
@@ -294,7 +294,7 @@ Les versions des images sont définies dans `k8s/overlays/local/kustomization.ya
 | **GitOps avec Argo CD** | Le cluster se synchronise seul sur l'overlay versionné dans Git : chaque changement passe par une pull request relue, la dérive est détectée et corrigée, et aucun identifiant du cluster ne sort du cluster |
 | **Secrets compatibles GitOps** (Sealed Secrets ou External Secrets Operator avec Google Secret Manager) | Plus aucun secret créé à la main : ils sont chiffrés dans Git, ou lus depuis un coffre-fort |
 | **CI GitHub Actions** | Build et push des images à chaque commit, scan Trivy **bloquant** sur les vulnérabilités critiques, pull request automatique de mise à jour du tag |
-| **Observabilité : Prometheus et Grafana** | Métriques de l'application et du cluster, tableaux de bord, alertes sur les erreurs et la latence |
+| **Métriques de service et alertes** | Débit, erreurs et latence de chaque route (méthode RED) via les métriques de Traefik ou l'instrumentation de l'api ; alertes Alertmanager envoyées sur Discord, au même endroit que les alertes de l'application |
 | **IAP ou Cloud Armor** devant l'application | Authentification des utilisateurs, filtrage des requêtes (WAF) et limitation de débit |
 | **Comparaison avec GKE Autopilot** | Mesurer ce que le service managé simplifie (control plane, nœuds, autoscaling) et ce qu'il coûte, par rapport au cluster kubeadm |
 
